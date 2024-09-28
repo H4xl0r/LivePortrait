@@ -28,6 +28,24 @@ def load_video(video_info, n_frames=-1):
     reader.close()
     return ret
 
+def load_driving_info(driving_info):
+    driving_video_ori = []
+
+    def load_images_from_directory(directory):
+        image_paths = sorted(glob(osp.join(directory, '*.png')) + glob(osp.join(directory, '*.jpg')))
+        return [load_image_rgb(im_path) for im_path in image_paths]
+
+    def load_images_from_video(file_path):
+        reader = imageio.get_reader(file_path)
+        return [image for idx, image in enumerate(reader)]
+
+    if osp.isdir(driving_info):
+        driving_video_ori = load_images_from_directory(driving_info)
+    elif osp.isfile(driving_info):
+        driving_video_ori = load_images_from_video(driving_info)
+
+    return driving_video_ori
+
 
 def contiguous(obj):
     if not obj.flags.c_contiguous:

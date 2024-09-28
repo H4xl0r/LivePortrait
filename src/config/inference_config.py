@@ -54,6 +54,10 @@ class InferenceConfig(PrintableConfig):
     source_division: int = 2 # make sure the height and width of source image or video can be divided by this number
     animation_region: Literal["exp", "pose", "lip", "eyes", "all"] = "all" # the region where the animation was performed, "exp" means the expression, "pose" means the head pose
 
+    # Webcam
+    flag_lip_zero: bool = True #wtf # whether let the lip to close state before animation, only take effect when flag_eye_retargeting and flag_lip_retargeting is False
+    lip_zero_threshold: float = 0.03 #wtf
+
     # NOT EXPORTED PARAMS
     lip_normalize_threshold: float = 0.03 # threshold for flag_normalize_lip
     source_video_eye_retargeting_threshold: float = 0.18 # threshold for eyes retargeting if the input is a source video

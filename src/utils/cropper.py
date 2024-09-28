@@ -24,6 +24,12 @@ from .human_landmark_runner import LandmarkRunner as HumanLandmark
 def make_abs_path(fn):
     return osp.join(osp.dirname(osp.realpath(__file__)), fn)
 
+def load_image_rgb(image_path: str):
+    if not osp.exists(image_path):
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
 
 @dataclass
 class Trajectory:
@@ -47,18 +53,22 @@ class Cropper(object):
         if flag_force_cpu:
             device = "cpu"
             face_analysis_wrapper_provider = ["CPUExecutionProvider"]
+            log("Forced CPU Execution")
         else:
             try:
                 if torch.backends.mps.is_available():
                     # Shape inference currently fails with CoreMLExecutionProvider
                     # for the retinaface model
                     device = "mps"
+                    log("MPS CPU")
                     face_analysis_wrapper_provider = ["CPUExecutionProvider"]
                 else:
                     device = "cuda"
+                    log("Cuda")
                     face_analysis_wrapper_provider = ["CUDAExecutionProvider"]
             except:
                     device = "cuda"
+                    log("Cuda")
                     face_analysis_wrapper_provider = ["CUDAExecutionProvider"]
         self.face_analysis_wrapper = FaceAnalysisDIY(
                     name="buffalo_l",
@@ -149,6 +159,32 @@ class Cropper(object):
             ret_dct["lmk_crop"] = lmk
 
         return ret_dct
+
+    def crop_single_image(self, obj, **kwargs):
+        # Instead of implementing the logic here, just call crop_source_image
+        if isinstance(obj, str):
+            img_rgb = load_image_rgb(obj)
+        elif isinstance(obj, np.ndarray):
+            img_rgb = obj
+        else:
+            log("Invalid input type for image. Expected a file path or ndarray.")
+            return None
+
+        # Create a CropConfig object with necessary parameters
+        crop_cfg = CropConfig(
+            direction=kwargs.get('direction', 'large-small'),
+            dsize=kwargs.get('dsize', 512),
+            scale=kwargs.get('scale', 2.3),
+            vx_ratio=kwargs.get('vx_ratio', 0),
+            vy_ratio=kwargs.get('vy_ratio', -0.15),
+            animal_face_type=kwargs.get('animal_face_type', 'animal_face'),  # Modify as needed
+            max_face_num=kwargs.get('max_face_num', 1),
+            flag_do_rot=kwargs.get('flag_do_rot', False)
+        )
+
+        # Call crop_source_image instead of duplicating the logic
+        return self.crop_source_image(img_rgb, crop_cfg)
+
 
     def calc_lmk_from_cropped_image(self, img_rgb_, **kwargs):
         direction = kwargs.get("direction", "large-small")

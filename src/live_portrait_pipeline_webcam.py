@@ -17,7 +17,7 @@ from .utils.video import images2video, concat_frames
 from .utils.crop import _transform_img, prepare_paste_back, paste_back
 from .utils.retargeting_utils import calc_lip_close_ratio
 from .utils.io import load_image_rgb, load_driving_info, resize_to_limit
-from .utils.helper import mkdir, basename, dct2cuda, is_video, is_template
+from .utils.helper import mkdir, basename, dct2device, is_video, is_template
 from .utils.rprint import rlog as log
 from .live_portrait_wrapper import LivePortraitWrapper
 
@@ -26,18 +26,18 @@ def make_abs_path(fn):
     return osp.join(osp.dirname(osp.realpath(__file__)), fn)
 
 
-class LivePortraitPipeline(object):
+class LivePortraitPipelineWebcam(object):
 
     def __init__(self, inference_cfg: InferenceConfig, crop_cfg: CropConfig):
-        self.live_portrait_wrapper: LivePortraitWrapper = LivePortraitWrapper(cfg=inference_cfg)
+        self.live_portrait_wrapper: LivePortraitWrapper = LivePortraitWrapper(inference_cfg=inference_cfg)
         self.cropper = Cropper(crop_cfg=crop_cfg)
 
     def execute_frame(self, frame, source_image_path):
-        inference_cfg = self.live_portrait_wrapper.cfg  # for convenience
+        inference_cfg = self.live_portrait_wrapper.inference_cfg  # for convenience
 
         # Load and preprocess source image
         img_rgb = load_image_rgb(source_image_path)
-        img_rgb = resize_to_limit(img_rgb, inference_cfg.ref_max_shape, inference_cfg.ref_shape_n)
+        img_rgb = resize_to_limit(img_rgb, inference_cfg.source_max_dim, inference_cfg.source_division)
         log(f"Load source image from {source_image_path}")
         crop_info = self.cropper.crop_single_image(img_rgb)
         source_lmk = crop_info['lmk_crop']
@@ -66,11 +66,11 @@ class LivePortraitPipeline(object):
         return x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb
 
     def generate_frame(self, x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb, driving_info):
-        inference_cfg = self.live_portrait_wrapper.cfg  # for convenience
+        inference_cfg = self.live_portrait_wrapper.inference_cfg  # for convenience
 
         # Process driving info
         driving_rgb = cv2.resize(driving_info, (256, 256))
-        I_d_i = self.live_portrait_wrapper.prepare_driving_videos([driving_rgb])[0]
+        I_d_i = self.live_portrait_wrapper.prepare_videos([driving_rgb])[0]
 
 
         x_d_i_info = self.live_portrait_wrapper.get_kp_info(I_d_i)
